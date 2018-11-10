@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Funding Opportunities</title>
+</head>
+<body>
+    <!-- HTML Body -->
+    <div id="table-container"></div>
+
+    <!-- JavaScript Code -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/handlebars.js/4.0.12/handlebars.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/js-yaml/3.12.0/js-yaml.min.js"></script>
+    <script src="//cdnjs.cloudflare.com/ajax/libs/list.js/1.5.0/list.min.js"></script>
+
+    <script id="table-template" type="text/x-handlebars-template">
+        <input class="search" placeholder="Search" />
+        <!-- <button class="sort" data-sort="name">Sort by name</button> -->
+        <table>
+            <thead>
+                {{#each headers}}
+                    <th>{{this}}</th>
+                {{/each}}
+            </thead>
+
+            <tbody class="list">
+
+              {{#each data}}
+              <tr>
+                {{#each ../headers}}
+                    <td class="{{this}}">
+                        {{lookup .. this}}
+                    </td>
+                {{/each}}
+              </tr>
+              {{/each}}
+            </tbody>
+        </table>
+    </script>
+    <script type="text/javascript">
+        // Helper to allow 'lookup .. this'
+        // Handlebars.registerHelper("isItemExist", function(array, value, options) {
+        //     return value < array.length ? options.fn(this) : options.inverse(this);
+        // });
+
+        // Return unique items in array (in the order they were read)
+        function uniqueArray(a) {
+          function onlyUnique(value, index, self) { 
+              return self.indexOf(value) === index;
+          }
+
+          // usage
+          var unique = a.filter( onlyUnique );
+
+          return unique;
+        }
+
+        // Get data from YAML file
+        function ajax_get(url, callback) {
+            xmlhttp = new XMLHttpRequest();
+            xmlhttp.onreadystatechange = function() {
+                if (xmlhttp.readyState == 4 && xmlhttp.status == 200) {
+                    try {
+                        var data = jsyaml.safeLoad(xmlhttp.responseText);
+                    } catch(err) {
+                        console.log(err.message + " in " + xmlhttp.responseText);
+                        return;
+                    }
+                    callback(data);
+                }
+            };
+         
+            xmlhttp.open("GET", url, true);
+            xmlhttp.send();
+        }
+
+        var test;
+        // Compile and Populate template
+        ajax_get('funding-copy.yaml', function(data) {
+         
+            // Fetch Template HTML/HBS
+            var source   = document.getElementById('table-template').innerHTML;
+            var template = Handlebars.compile(source);
+            
+            // Parse headers from YAML file categories
+            var allKeys = [];
+            data.funding.forEach(function(element){
+                Object.keys(element).forEach(function(item){
+                    allKeys.push(item);
+                })
+            })
+            var uniqueKeys = uniqueArray(allKeys);
+            test = data.funding;
+
+            // Populate Template
+            var html = template({
+                            'headers': uniqueKeys,
+                            'data': data.funding
+                        });
+            document.getElementById("table-container").innerHTML = html;
+
+            // Setup searchable table
+            var options = {
+              valueNames: uniqueKeys,
+            };
+
+            var userList = new List('table-container', options);
+
+        });
+    </script>
+</body>
+</html>
